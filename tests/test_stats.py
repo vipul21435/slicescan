@@ -1,5 +1,6 @@
 import random
 
+import numpy as np
 import pytest
 from scipy import stats as sps
 from statsmodels.stats.proportion import proportion_confint
@@ -82,3 +83,81 @@ def test_binomial_rejects_bad_input():
         binomial_test(4, 3)
     with pytest.raises(ValueError):
         binomial_test(1, 3, 1.0)
+
+
+def test_mcnemar_matches_statsmodels_and_scipy():
+    from statsmodels.stats.contingency_tables import mcnemar
+
+    from slicescan.stats import mcnemar_exact
+
+    rng = np.random.default_rng(21)
+    for _ in range(40):
+        b, c = (int(x) for x in rng.integers(0, 40, size=2))
+        a, d = 10, 7
+        expected = mcnemar([[a, b], [c, d]], exact=True).pvalue
+        assert mcnemar_exact(b, c) == pytest.approx(expected, rel=1e-9, abs=1e-15)
+        if b + c:
+            assert mcnemar_exact(b, c) == pytest.approx(
+                sps.binomtest(b, b + c, 0.5).pvalue, rel=1e-9
+            )
+    assert mcnemar_exact(0, 0) == 1.0
+    with pytest.raises(ValueError):
+        mcnemar_exact(-1, 2)
+
+
+def test_paired_interval_hand_worked():
+    from slicescan.stats import paired_diff_interval
+
+    # b=12, c=4, n=50: cells +0.5 give diff 8/52, var = (17/52 - (8/52)^2) / 52.
+    low, high = paired_diff_interval(12, 4, 50)
+    diff = 8 / 52
+    half = 1.959963984540054 * ((17 / 52 - diff**2) / 52) ** 0.5
+    assert low == pytest.approx(diff - half, rel=1e-9)
+    assert high == pytest.approx(diff + half, rel=1e-9)
+    assert paired_diff_interval(0, 0, 3)[0] < 0 < paired_diff_interval(0, 0, 3)[1]
+    with pytest.raises(ValueError):
+        paired_diff_interval(5, 6, 10)
+
+
+def test_paired_interval_coverage_by_simulation():
+    from slicescan.stats import paired_diff_interval
+
+    rng = np.random.default_rng(5)
+    probs = [0.55, 0.15, 0.05, 0.25]  # both right, first only, second only, both wrong
+    true = probs[1] - probs[2]
+    n, reps, cover = 60, 2000, 0
+    for _ in range(reps):
+        counts = rng.multinomial(n, probs)
+        low, high = paired_diff_interval(int(counts[1]), int(counts[2]), n)
+        cover += low <= true <= high
+    assert 0.93 <= cover / reps <= 0.975
+
+
+def test_mean_interval_against_normal_formula():
+    from slicescan.stats import mean_interval
+
+    values = [0.2, 0.4, 0.4, 0.9, 1.0]
+    low, high = mean_interval(values)
+    half = 1.959963984540054 * np.std(values, ddof=1) / np.sqrt(5)
+    assert low == pytest.approx(np.mean(values) - half)
+    assert high == pytest.approx(np.mean(values) + half)
+    assert mean_interval([0.3]) == pytest.approx((0.3, 0.3))
+    with pytest.raises(ValueError):
+        mean_interval([])
+
+
+def test_permutation_test_against_scipy():
+    from slicescan.stats import permutation_test
+
+    rng = np.random.default_rng(8)
+    x = list(rng.normal(0.4, 0.2, size=15))
+    y = list(rng.normal(0.6, 0.2, size=40))
+    ours = permutation_test(x, y, resamples=4000, seed=1)
+    ref = sps.permutation_test(
+        (x, y), lambda a, b: np.mean(a) - np.mean(b), n_resamples=4000, random_state=2
+    ).pvalue
+    assert ours == pytest.approx(ref, abs=0.01)
+    same = permutation_test([0.5] * 5, [0.5] * 5, resamples=50)
+    assert same == 1.0
+    with pytest.raises(ValueError):
+        permutation_test([], [1.0])

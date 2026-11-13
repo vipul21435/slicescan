@@ -93,3 +93,79 @@ def binomial_test(k: int, n: int, p: float = 0.5) -> float:
     observed = logpmf(k) + math.log(_REL_TOL)
     kept = [lp for lp in (logpmf(x) for x in range(n + 1)) if lp <= observed]
     return min(1.0, math.exp(_log_sum_exp(kept)))
+
+
+def mcnemar_exact(b: int, c: int) -> float:
+    """Exact (conditional) McNemar test on the discordant counts of a paired 2x2 table.
+
+    ``b`` counts items the first system got right and the second wrong, ``c`` the reverse.
+    Under the null each discordant item is equally likely to fall either way (McNemar 1947), so
+    the p-value is a two-sided binomial test of ``b`` out of ``b + c`` against one half.
+    """
+    if b < 0 or c < 0:
+        raise ValueError("counts must be non-negative")
+    return binomial_test(b, b + c, 0.5)
+
+
+def paired_diff_interval(
+    b: int, c: int, n: int, confidence: float = 0.95
+) -> tuple[float, float]:
+    """Interval for the difference of two matched proportions, ``(b - c) / n``.
+
+    Agresti and Min (2005): add one half to each of the four cells of the paired table, then
+    use the Wald interval. It keeps close to nominal coverage for small ``n`` where the plain
+    Wald interval does not.
+    """
+    if n <= 0:
+        raise ValueError("n must be positive")
+    if b < 0 or c < 0 or b + c > n:
+        raise ValueError("need 0 <= b, c and b + c <= n")
+    z = normal_quantile(confidence)
+    b_, c_, n_ = b + 0.5, c + 0.5, n + 2.0
+    diff = (b_ - c_) / n_
+    var = ((b_ + c_) / n_ - diff * diff) / n_
+    half = z * math.sqrt(max(var, 0.0))
+    return max(-1.0, diff - half), min(1.0, diff + half)
+
+
+def mean_interval(values: list[float], confidence: float = 0.95) -> tuple[float, float]:
+    """Normal-approximation interval for a mean, from the sample standard deviation."""
+    n = len(values)
+    if n == 0:
+        raise ValueError("no values")
+    mean = math.fsum(values) / n
+    if n == 1:
+        return mean, mean
+    var = math.fsum((v - mean) ** 2 for v in values) / (n - 1)
+    half = normal_quantile(confidence) * math.sqrt(var / n)
+    return mean - half, mean + half
+
+
+def permutation_test(
+    slice_values: list[float],
+    rest_values: list[float],
+    *,
+    resamples: int = 2000,
+    seed: int = 0,
+) -> float:
+    """Two-sided permutation test for a difference in means between a slice and the rest.
+
+    Random relabellings keep the slice size fixed. The p-value counts the observed split as one
+    of the relabellings, ``(1 + hits) / (1 + resamples)``, so it is never zero.
+    """
+    import random
+
+    n, m = len(slice_values), len(rest_values)
+    if n == 0 or m == 0:
+        raise ValueError("both groups need at least one value")
+    pooled = list(slice_values) + list(rest_values)
+    total = math.fsum(pooled)
+    observed = abs(math.fsum(slice_values) / n - (total - math.fsum(slice_values)) / m)
+    rng = random.Random(seed)
+    hits = 0
+    tol = 1e-12 * max(1.0, observed)
+    for _ in range(resamples):
+        s = math.fsum(rng.sample(pooled, n))
+        if abs(s / n - (total - s) / m) >= observed - tol:
+            hits += 1
+    return (1 + hits) / (1 + resamples)
