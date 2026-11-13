@@ -197,9 +197,7 @@ def slice_column(
             groups.setdefault(_category_label(value), set()).add(item)
         order = sorted(groups)
 
-    slices = [
-        Slice((column,), (label,), (kind,), frozenset(groups[label])) for label in order
-    ]
+    slices = [Slice((column,), (label,), (kind,), frozenset(groups[label])) for label in order]
     return ColumnSlices(column, kind, slices, missing, edges, notes)
 
 

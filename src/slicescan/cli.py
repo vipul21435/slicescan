@@ -1,4 +1,4 @@
-"""Command-line interface: ``slicescan table``."""
+"""Command-line interface: ``slicescan table | compare | reversals | explain``."""
 
 from __future__ import annotations
 
@@ -7,8 +7,18 @@ import sys
 from collections.abc import Sequence
 
 from . import __version__
+from .compare import compare
 from .data import load_dataset
-from .report import table_markdown, to_json
+from .explain import explain
+from .report import (
+    compare_markdown,
+    explain_markdown,
+    reversals_markdown,
+    table_chart,
+    table_markdown,
+    to_json,
+)
+from .reversals import reversals
 from .slices import KINDS
 from .table import slice_table
 
@@ -80,6 +90,28 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="COLUMN",
         help="print the raw and shrunk ranking of this column's slices (repeatable)",
     )
+    table.add_argument("--chart", metavar="PNG", help="write a dot plot (needs matplotlib)")
+
+    cmp = sub.add_parser("compare", help="paired comparison of two systems per slice")
+    _add_input(cmp)
+    cmp.add_argument("model_a", metavar="A")
+    cmp.add_argument("model_b", metavar="B")
+
+    rev = sub.add_parser("reversals", help="does the overall winner lose inside the slices?")
+    _add_input(rev)
+    rev.add_argument("model_a", metavar="A")
+    rev.add_argument("model_b", metavar="B")
+
+    exp = sub.add_parser("explain", help="one slice in detail, within the table's family")
+    _add_input(exp)
+    exp.add_argument("--model", help="model to analyse (default: the only one in the file)")
+    exp.add_argument(
+        "--slice",
+        required=True,
+        dest="slice_label",
+        help='slice label, e.g. "repo=x" or "repo=x & size=[1, 5)"',
+    )
+    exp.add_argument("--max-items", type=int, default=20)
     return parser
 
 
@@ -101,25 +133,45 @@ def main(argv: Sequence[str] | None = None) -> int:
         score_col=args.score_col,
         meta_item_col=args.meta_item_col,
     )
+    common = {
+        "kinds": _kinds(args.kind),
+        "bins": args.bins,
+        "tag_sep": args.tag_sep,
+    }
+    tested = {
+        "min_size": args.min_size,
+        "confidence": args.confidence,
+        "two_way": args.two_way,
+        "two_way_cap": args.two_way_cap,
+        "resamples": args.resamples,
+        "seed": args.seed,
+    }
+    columns = _columns(args.columns)
     if args.command == "table":
-        table = slice_table(
+        result = slice_table(
+            dataset, _pick_model(dataset.models, args.model), columns, **common, **tested
+        )
+        if args.chart:
+            table_chart(result, args.chart, top=args.top or 20)
+        text = table_markdown(result, alpha=args.alpha, top=args.top, rank=args.rank)
+    elif args.command == "compare":
+        result = compare(dataset, args.model_a, args.model_b, columns, **common, **tested)
+        text = compare_markdown(result, alpha=args.alpha, top=args.top)
+    elif args.command == "reversals":
+        result = reversals(dataset, args.model_a, args.model_b, columns, **common)
+        text = reversals_markdown(result)
+    else:
+        result = explain(
             dataset,
             _pick_model(dataset.models, args.model),
-            _columns(args.columns),
-            kinds=_kinds(args.kind),
-            bins=args.bins,
-            tag_sep=args.tag_sep,
-            min_size=args.min_size,
-            confidence=args.confidence,
-            two_way=args.two_way,
-            two_way_cap=args.two_way_cap,
-            resamples=args.resamples,
-            seed=args.seed,
+            args.slice_label,
+            columns,
+            **common,
+            **tested,
+            max_items=args.max_items,
         )
-        if args.format == "json":
-            sys.stdout.write(to_json(table))
-        else:
-            sys.stdout.write(table_markdown(table, alpha=args.alpha, top=args.top, rank=args.rank))
+        text = explain_markdown(result)
+    sys.stdout.write(to_json(result) if args.format == "json" else text)
     return 0
 
 

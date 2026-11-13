@@ -107,9 +107,7 @@ def mcnemar_exact(b: int, c: int) -> float:
     return binomial_test(b, b + c, 0.5)
 
 
-def paired_diff_interval(
-    b: int, c: int, n: int, confidence: float = 0.95
-) -> tuple[float, float]:
+def paired_diff_interval(b: int, c: int, n: int, confidence: float = 0.95) -> tuple[float, float]:
     """Interval for the difference of two matched proportions, ``(b - c) / n``.
 
     Agresti and Min (2005): add one half to each of the four cells of the paired table, then
@@ -194,9 +192,7 @@ def bootstrap_mean_interval(
     return means[lo_i], means[hi_i]
 
 
-def sign_flip_test(
-    differences: list[float], *, resamples: int = 2000, seed: int = 0
-) -> float:
+def sign_flip_test(differences: list[float], *, resamples: int = 2000, seed: int = 0) -> float:
     """Two-sided paired permutation test: flip the sign of each difference at random.
 
     Under the null that the two systems are exchangeable on every item, each paired

@@ -111,8 +111,14 @@ def test_false_discoveries_under_a_global_null():
         for i in range(300):
             item = f"n{i}"
             results.append({"item": item, "model": "m", "score": int(rng.random() < 0.5)})
-            meta.append({"item": item, "a": rng.choice("abcdef"), "b": rng.choice("pqrs"),
-                         "c": rng.random()})
+            meta.append(
+                {
+                    "item": item,
+                    "a": rng.choice("abcdef"),
+                    "b": rng.choice("pqrs"),
+                    "c": rng.random(),
+                }
+            )
         table = slice_table(build_dataset(results, meta), "m", ["a", "b", "c"], min_size=10)
         any_bh += bool(table.significant(0.05, "bh"))
         any_holm += bool(table.significant(0.05, "holm"))

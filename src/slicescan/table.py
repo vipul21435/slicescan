@@ -259,9 +259,7 @@ def slice_table(
     if two_way:
         extra = two_way_slices(column_slices, len(scores), min_size=min_size, cap=two_way_cap)
         candidates.extend(extra.slices)
-        description += (
-            f" + {len(extra.slices)} two-way slices of {len(extra.pairs)} column pairs"
-        )
+        description += f" + {len(extra.slices)} two-way slices of {len(extra.pairs)} column pairs"
         if extra.dropped:
             description += (
                 f" (cap {extra.cap}, largest kept; {extra.dropped} smaller ones not tested)"

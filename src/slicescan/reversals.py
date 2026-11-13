@@ -103,12 +103,13 @@ def check_partition(
     *,
     kind: str | None = None,
     bins: int = 4,
+    tag_sep: str | None = "|",
 ) -> PartitionCheck | None:
     """Check one column; ``None`` when the column is a tag column."""
     a = dataset.model_scores(model_a)
     b = dataset.model_scores(model_b)
     union = sorted(set(a) | set(b))
-    col = slice_column(dataset.meta, union, column, kind=kind, bins=bins)
+    col = slice_column(dataset.meta, union, column, kind=kind, bins=bins, tag_sep=tag_sep)
     if col.kind == "tag":
         return None
     groups: list[tuple[str, set[str]]] = [(s.label, set(s.items)) for s in col.slices]
@@ -177,6 +178,7 @@ def reversals(
     *,
     kinds: Mapping[str, str] | None = None,
     bins: int = 4,
+    tag_sep: str | None = "|",
 ) -> ReversalReport:
     """Check each partitioning column for an aggregation reversal between two systems."""
     if model_a == model_b:
@@ -189,12 +191,10 @@ def reversals(
     checks, skipped = [], []
     for column in columns:
         check = check_partition(
-            dataset, model_a, model_b, column, kind=kinds.get(column), bins=bins
+            dataset, model_a, model_b, column, kind=kinds.get(column), bins=bins, tag_sep=tag_sep
         )
         if check is None:
             skipped.append(column)
         else:
             checks.append(check)
-    return ReversalReport(
-        model_a, model_b, len(a), len(b), len(set(a) & set(b)), checks, skipped
-    )
+    return ReversalReport(model_a, model_b, len(a), len(b), len(set(a) & set(b)), checks, skipped)
