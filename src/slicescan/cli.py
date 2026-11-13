@@ -51,6 +51,16 @@ def _add_input(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--alpha", type=float, default=0.05)
     parser.add_argument("--format", choices=("markdown", "json"), default="markdown")
     parser.add_argument("--top", type=int, help="show only the first N rows")
+    parser.add_argument(
+        "--two-way", action="store_true", help="also test intersections of two columns"
+    )
+    parser.add_argument(
+        "--two-way-cap", type=int, default=100, help="most two-way slices to test (largest first)"
+    )
+    parser.add_argument(
+        "--resamples", type=int, default=2000, help="bootstrap and permutation draws (real scores)"
+    )
+    parser.add_argument("--seed", type=int, default=0)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -63,6 +73,13 @@ def build_parser() -> argparse.ArgumentParser:
     table = sub.add_parser("table", help="slice table for one model")
     _add_input(table)
     table.add_argument("--model", help="model to analyse (default: the only one in the file)")
+    table.add_argument(
+        "--rank",
+        action="append",
+        default=[],
+        metavar="COLUMN",
+        help="print the raw and shrunk ranking of this column's slices (repeatable)",
+    )
     return parser
 
 
@@ -94,11 +111,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             tag_sep=args.tag_sep,
             min_size=args.min_size,
             confidence=args.confidence,
+            two_way=args.two_way,
+            two_way_cap=args.two_way_cap,
+            resamples=args.resamples,
+            seed=args.seed,
         )
         if args.format == "json":
             sys.stdout.write(to_json(table))
         else:
-            sys.stdout.write(table_markdown(table, alpha=args.alpha, top=args.top))
+            sys.stdout.write(table_markdown(table, alpha=args.alpha, top=args.top, rank=args.rank))
     return 0
 
 
