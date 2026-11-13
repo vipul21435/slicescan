@@ -15,3 +15,11 @@
 - `slicescan explain`: one slice within the table's family.
 - Markdown and JSON output.
 - Fetch and summary scripts for SWE-bench Verified per-instance results.
+- Command-line errors (missing or malformed files, bad scores, unknown models, columns or
+  slices, out-of-range options) print one line to stderr and exit with status 2.
+- Files with a UTF-8 byte-order mark are read.
+- Unknown `--columns` and results whose ids match no metadata row are errors.
+- Non-finite scores are rejected with their row number.
+- Tied slices share an average rank; Spearman correlation handles ties.
+- A majority reversal needs at least two compared slices.
+- Exact p-values are exactly 1 when every table counts.
