@@ -176,6 +176,12 @@ slicescan table DATA/results.jsonl --meta DATA/meta.csv --model 20260217_mini-v2
     --columns repo,difficulty,year,patch_lines --rank repo
 ```
 
+The same table as a chart (`--top 20 --chart docs/gpt-5-mini-slices.png`): dots are raw scores
+with their Wilson intervals, crosses the shrunk scores, the dashed line the overall score, and
+the slices marked on the right have a BH-adjusted p below 0.05.
+
+![Twenty slices of gpt-5-mini with intervals and shrunk scores](docs/gpt-5-mini-slices.png)
+
 **Shrunk against raw ranking of repositories.** For `gpt-5-mini` the fitted prior has mean
 0.562 and size a + b = 28.6 items. The raw ranking puts `pallets/flask` first (1 instance,
 solved) and `psf/requests` second (6 of 8); shrunk, they fall to 4th and 3rd, and
