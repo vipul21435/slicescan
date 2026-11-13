@@ -167,3 +167,15 @@ def test_two_way_slices_cap_keeps_largest():
         two_way_slices(cols, 40, min_size=1, pairs=[("a", "a")])
     with pytest.raises(ValueError):
         two_way_slices(cols, 40, min_size=1, cap=-1)
+
+
+@pytest.mark.parametrize("suffix", [".csv", ".jsonl"])
+def test_byte_order_mark_is_ignored(tmp_path, suffix):
+    path = tmp_path / f"r{suffix}"
+    if suffix == ".csv":
+        text = "item,model,score\na,m,1\n"
+    else:
+        text = json.dumps({"item": "a", "model": "m", "score": 1}) + "\n"
+    path.write_bytes(b"\xef\xbb\xbf" + text.encode("utf-8"))
+    ds = load_dataset(path)
+    assert ds.scores == {"m": {"a": 1.0}}

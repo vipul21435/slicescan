@@ -19,12 +19,12 @@ def read_rows(path: str | Path) -> list[dict[str, Any]]:
     path = Path(path)
     suffix = path.suffix.lower()
     if suffix in {".csv", ".tsv"}:
-        with path.open(newline="", encoding="utf-8") as handle:
+        with path.open(newline="", encoding="utf-8-sig") as handle:
             reader = csv.DictReader(handle, delimiter="\t" if suffix == ".tsv" else ",")
             return [dict(row) for row in reader]
     if suffix in {".jsonl", ".ndjson", ".json"}:
         rows = []
-        with path.open(encoding="utf-8") as handle:
+        with path.open(encoding="utf-8-sig") as handle:
             for lineno, line in enumerate(handle, start=1):
                 line = line.strip()
                 if not line:
