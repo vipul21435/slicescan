@@ -179,7 +179,8 @@ def compare(
     if two_way:
         extra = two_way_slices(column_slices, len(common), min_size=min_size, cap=two_way_cap)
         candidates.extend(extra.slices)
-        description += f" + {len(extra.slices)} two-way slices of {len(extra.pairs)} column pairs"
+        pairs = f"{len(extra.pairs)} column pair" + ("" if len(extra.pairs) == 1 else "s")
+        description += f" + {len(extra.slices)} two-way slices of {pairs}"
         if extra.dropped:
             description += (
                 f" (cap {extra.cap}, largest kept; {extra.dropped} smaller ones not tested)"
