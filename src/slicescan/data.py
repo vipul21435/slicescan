@@ -29,7 +29,10 @@ def read_rows(path: str | Path) -> list[dict[str, Any]]:
                 line = line.strip()
                 if not line:
                     continue
-                record = json.loads(line)
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    raise ValueError(f"{path}:{lineno}: not valid JSON ({exc.msg})") from None
                 if not isinstance(record, dict):
                     raise ValueError(f"{path}:{lineno}: expected a JSON object per line")
                 rows.append(record)
@@ -57,11 +60,14 @@ def parse_score(value: Any) -> float:
             return 1.0
         if text in _FALSE:
             return 0.0
-        score = float(text)
+        try:
+            score = float(text)
+        except ValueError:
+            raise ValueError(f"cannot read a score from {value!r}") from None
     else:
         raise ValueError(f"cannot read a score from {value!r}")
-    if math.isnan(score):
-        raise ValueError("score is NaN")
+    if not math.isfinite(score):
+        raise ValueError(f"score must be a finite number, got {value!r}")
     return score
 
 
@@ -83,6 +89,17 @@ class Dataset:
             for key in row:
                 seen.setdefault(key, None)
         return list(seen)
+
+    def check_columns(self, columns: list[str], items: Iterable[str]) -> None:
+        """Raise if a column is unknown or if none of ``items`` has any metadata."""
+        known = self.meta_columns()
+        unknown = [c for c in columns if c not in known]
+        if unknown:
+            raise ValueError(
+                f"unknown column {unknown[0]!r}; metadata columns: {', '.join(known) or 'none'}"
+            )
+        if not any(self.meta.get(item) for item in items):
+            raise ValueError("no scored item has metadata; check the item ids in both files")
 
     def model_scores(self, model: str) -> dict[str, float]:
         if model not in self.scores:
@@ -132,7 +149,10 @@ def build_dataset(
         model_scores = scores.setdefault(model, {})
         if item in model_scores:
             raise ValueError(f"item {item!r} is scored twice for model {model!r}")
-        model_scores[item] = parse_score(row[score_col])
+        try:
+            model_scores[item] = parse_score(row[score_col])
+        except ValueError as exc:
+            raise ValueError(f"result row {n}: {exc}") from None
         current = from_results.setdefault(item, {})
         for key, value in row.items():
             if key in (item_col, model_col, score_col) or is_missing(value):

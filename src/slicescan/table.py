@@ -242,6 +242,7 @@ def slice_table(
     columns = list(columns)
     if not columns:
         raise ValueError("no metadata columns to slice by")
+    dataset.check_columns(columns, scores)
     column_slices = one_way_slices(
         dataset.meta, scores, columns, kinds=kinds, bins=bins, tag_sep=tag_sep
     )

@@ -160,6 +160,8 @@ def slice_column(
     tag_sep: str | None = "|",
 ) -> ColumnSlices:
     """Build the one-way slices of ``column`` over ``items``."""
+    if bins < 1:
+        raise ValueError("bins must be at least 1")
     items = list(items)
     cells = {item: meta.get(item, {}).get(column) for item in items}
     present = {item: v for item, v in cells.items() if not is_missing(v)}

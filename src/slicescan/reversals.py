@@ -187,6 +187,10 @@ def reversals(
     b = dataset.model_scores(model_b)
     if columns is None:
         columns = dataset.meta_columns()
+    columns = list(columns)
+    if not columns:
+        raise ValueError("no metadata columns to slice by")
+    dataset.check_columns(columns, set(a) | set(b))
     kinds = dict(kinds or {})
     checks, skipped = [], []
     for column in columns:

@@ -164,6 +164,9 @@ def compare(
     if columns is None:
         columns = dataset.meta_columns()
     columns = list(columns)
+    if not columns:
+        raise ValueError("no metadata columns to slice by")
+    dataset.check_columns(columns, common)
     column_slices = one_way_slices(
         dataset.meta, common, columns, kinds=kinds, bins=bins, tag_sep=tag_sep
     )

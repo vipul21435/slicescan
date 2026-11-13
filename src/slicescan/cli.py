@@ -28,7 +28,7 @@ def _kinds(pairs: Sequence[str]) -> dict[str, str]:
     for pair in pairs:
         column, sep, kind = pair.partition("=")
         if not sep or kind not in KINDS:
-            raise SystemExit(f"--kind wants COLUMN=KIND with KIND one of {', '.join(KINDS)}")
+            raise ValueError(f"--kind wants COLUMN=KIND with KIND one of {', '.join(KINDS)}")
         kinds[column] = kind
     return kinds
 
@@ -120,11 +120,21 @@ def _pick_model(models: list[str], wanted: str | None) -> str:
         return wanted
     if len(models) == 1:
         return models[0]
-    raise SystemExit(f"several models in the results; pick one with --model: {', '.join(models)}")
+    raise ValueError(f"several models in the results; pick one with --model: {', '.join(models)}")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Run the command line; user errors print one line to stderr and return 2."""
     args = build_parser().parse_args(argv)
+    try:
+        return _run(args)
+    except (ValueError, KeyError, OSError) as exc:
+        message = exc.args[0] if isinstance(exc, KeyError) and exc.args else exc
+        sys.stderr.write(f"slicescan: error: {message}\n")
+        return 2
+
+
+def _run(args: argparse.Namespace) -> int:
     dataset = load_dataset(
         args.results,
         args.meta,
@@ -133,6 +143,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         score_col=args.score_col,
         meta_item_col=args.meta_item_col,
     )
+    if not dataset.scores:
+        raise ValueError(f"no result rows in {args.results}")
     common = {
         "kinds": _kinds(args.kind),
         "bins": args.bins,
