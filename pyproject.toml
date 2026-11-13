@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "slicescan"
+version = "0.1.0"
+description = "Find the metadata slices where a model's score differs from the rest, with the multiple-testing correction applied."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Vipul Raj Jha" }]
+requires-python = ">=3.10"
+dependencies = []
+keywords = ["evaluation", "slicing", "multiple testing", "error analysis", "statistics"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.7"]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.5",
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "statsmodels>=0.14",
+]
+
+[project.scripts]
+slicescan = "slicescan.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/vipul21435/slicescan"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/slicescan"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
