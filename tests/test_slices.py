@@ -142,3 +142,21 @@ def test_read_rows_jsonl_and_csv(tmp_path):
     notobj.write_text("[1, 2]\n")
     with pytest.raises(ValueError, match="JSON object"):
         read_rows(notobj)
+
+
+def test_two_way_slices_cap_keeps_largest():
+    from slicescan.slices import two_way_slices
+
+    meta = {f"i{k}": {"a": "x" if k < 30 else "y", "b": "p" if k % 3 else "q"} for k in range(40)}
+    cols = one_way_slices(meta, list(meta), ["a", "b"])
+    all_two = two_way_slices(cols, 40, min_size=1, cap=None)
+    assert all_two.candidates == 4 and all_two.dropped == 0
+    sizes = {s.label: s.size for s in all_two.slices}
+    assert sizes == {"a=x & b=p": 20, "a=x & b=q": 10, "a=y & b=p": 6, "a=y & b=q": 4}
+    capped = two_way_slices(cols, 40, min_size=5, cap=2)
+    assert [s.label for s in capped.slices] == ["a=x & b=p", "a=x & b=q"]
+    assert capped.candidates == 3 and capped.dropped == 1
+    with pytest.raises(ValueError):
+        two_way_slices(cols, 40, min_size=1, pairs=[("a", "a")])
+    with pytest.raises(ValueError):
+        two_way_slices(cols, 40, min_size=1, cap=-1)

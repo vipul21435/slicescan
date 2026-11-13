@@ -219,3 +219,57 @@ def one_way_slices(
         slice_column(meta, items, col, kind=kinds.get(col), bins=bins, tag_sep=tag_sep)
         for col in columns
     ]
+
+
+@dataclass
+class TwoWay:
+    """Two-way slices kept for testing, and how many candidates the cap left out."""
+
+    pairs: list[tuple[str, str]]
+    slices: list[Slice]
+    candidates: int
+    dropped: int
+    cap: int | None
+
+
+def two_way_slices(
+    columns: Sequence[ColumnSlices],
+    n_items: int,
+    *,
+    min_size: int,
+    cap: int | None = 100,
+    pairs: Sequence[tuple[str, str]] | None = None,
+) -> TwoWay:
+    """Intersections of the slices of two different columns.
+
+    Every intersection with at least ``min_size`` items that does not hold every item is a
+    candidate. When there are more candidates than ``cap``, the largest are kept (ties by
+    label). The choice uses sizes only, never scores, so the tests that are kept still form a
+    family whose adjustment is valid.
+    """
+    if cap is not None and cap < 0:
+        raise ValueError("cap must be non-negative")
+    by_name = {col.column: col for col in columns}
+    if pairs is None:
+        names = [col.column for col in columns]
+        pairs = [(a, b) for i, a in enumerate(names) for b in names[i + 1 :]]
+    for a, b in pairs:
+        if a == b or a not in by_name or b not in by_name:
+            raise ValueError(f"bad column pair ({a!r}, {b!r})")
+    candidates: list[Slice] = []
+    for a, b in pairs:
+        for left in by_name[a].slices:
+            for right in by_name[b].slices:
+                items = left.items & right.items
+                if min_size <= len(items) < n_items:
+                    candidates.append(
+                        Slice(
+                            left.columns + right.columns,
+                            left.values + right.values,
+                            left.kinds + right.kinds,
+                            frozenset(items),
+                        )
+                    )
+    candidates.sort(key=lambda s: (-s.size, s.label))
+    kept = candidates if cap is None else candidates[:cap]
+    return TwoWay(list(pairs), kept, len(candidates), len(candidates) - len(kept), cap)

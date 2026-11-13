@@ -161,3 +161,21 @@ def test_permutation_test_against_scipy():
     assert same == 1.0
     with pytest.raises(ValueError):
         permutation_test([], [1.0])
+
+
+def test_bootstrap_interval_close_to_scipy():
+    from slicescan.stats import bootstrap_mean_interval
+
+    rng = np.random.default_rng(3)
+    values = list(rng.uniform(0, 1, size=60))
+    low, high = bootstrap_mean_interval(values, resamples=4000, seed=4)
+    ref = sps.bootstrap(
+        (values,), np.mean, n_resamples=4000, method="percentile", random_state=9
+    ).confidence_interval
+    assert low == pytest.approx(ref.low, abs=0.01)
+    assert high == pytest.approx(ref.high, abs=0.01)
+    assert low < float(np.mean(values)) < high
+    with pytest.raises(ValueError):
+        bootstrap_mean_interval([])
+    with pytest.raises(ValueError):
+        bootstrap_mean_interval([1.0], resamples=0)

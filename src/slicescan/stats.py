@@ -169,3 +169,26 @@ def permutation_test(
         if abs(s / n - (total - s) / m) >= observed - tol:
             hits += 1
     return (1 + hits) / (1 + resamples)
+
+
+def bootstrap_mean_interval(
+    values: list[float],
+    confidence: float = 0.95,
+    *,
+    resamples: int = 2000,
+    seed: int = 0,
+) -> tuple[float, float]:
+    """Percentile bootstrap interval for a mean (Efron 1979), seeded so runs repeat."""
+    import random
+
+    n = len(values)
+    if n == 0:
+        raise ValueError("no values")
+    if resamples < 1:
+        raise ValueError("resamples must be at least 1")
+    rng = random.Random(seed)
+    means = sorted(math.fsum(rng.choices(values, k=n)) / n for _ in range(resamples))
+    tail = (1.0 - confidence) / 2.0
+    lo_i = min(resamples - 1, max(0, math.floor(tail * resamples)))
+    hi_i = min(resamples - 1, max(0, math.ceil((1.0 - tail) * resamples) - 1))
+    return means[lo_i], means[hi_i]
