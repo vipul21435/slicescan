@@ -1,8 +1,9 @@
 """Adjusted p-values for a family of tests.
 
 Holm (1979) controls the family-wise error rate under any dependence between the tests.
-Benjamini and Hochberg (1995) control the false discovery rate for independent tests and for
-positively dependent ones; slices of the same data overlap, so their tests are dependent.
+Benjamini and Hochberg (1995) control the false discovery rate for independent tests, and later
+work extended the guarantee to positively dependent ones; slices of the same data overlap, so
+their tests are dependent.
 """
 
 from __future__ import annotations
