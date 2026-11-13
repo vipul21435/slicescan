@@ -69,8 +69,21 @@ def test_spearman_against_scipy():
     xs = [1, 2, 3, 4, 5]
     ys = [2, 1, 4, 3, 5]
     assert spearman(xs, ys) == pytest.approx(sps.spearmanr(xs, ys).statistic)
+    tied = [0.75, 0.75, 0.5, 0.2, 0.2, 0.1]
+    other = [0.6, 0.7, 0.5, 0.45, 0.3, 0.4]
+    assert spearman(tied, other) == pytest.approx(sps.spearmanr(tied, other).statistic)
     with pytest.raises(ValueError):
         spearman([1], [1])
+    with pytest.raises(ValueError):
+        spearman([1, 1], [1, 2])
+
+
+def test_tied_raw_rates_share_an_average_rank():
+    _, rows = shrink_ranking(["p", "q", "r"], [6, 24, 1], [8, 32, 4])
+    by = {r.label: r for r in rows}
+    assert by["p"].raw_rank == pytest.approx(1.5)
+    assert by["q"].raw_rank == pytest.approx(1.5)
+    assert by["q"].shrunk_rank == pytest.approx(1.0)
 
 
 def test_bad_input():

@@ -81,21 +81,31 @@ def fit_beta_prior(successes: Sequence[int], sizes: Sequence[int]) -> BetaPrior:
 
 @dataclass
 class RankRow:
+    """Raw and shrunk rate of one slice; ranks are 1 for the highest, tied values share the
+    average of the ranks they span (two slices tied for second both get 2.5)."""
+
     label: str
     n: int
     successes: int
     raw: float
     shrunk: float
-    raw_rank: int
-    shrunk_rank: int
+    raw_rank: float
+    shrunk_rank: float
 
 
-def _ranks(values: Sequence[float], labels: Sequence[str]) -> list[int]:
-    """1 = highest value; ties broken by label so the order is stable."""
-    order = sorted(range(len(values)), key=lambda i: (-values[i], labels[i]))
-    ranks = [0] * len(values)
-    for rank, i in enumerate(order, start=1):
-        ranks[i] = rank
+def _ranks(values: Sequence[float], tol: float = 1e-12) -> list[float]:
+    """Average ranks, 1 = highest value."""
+    order = sorted(range(len(values)), key=lambda i: -values[i])
+    ranks = [0.0] * len(values)
+    start = 0
+    while start < len(order):
+        end = start
+        while end + 1 < len(order) and abs(values[order[end + 1]] - values[order[start]]) <= tol:
+            end += 1
+        average = (start + end) / 2.0 + 1.0
+        for k in range(start, end + 1):
+            ranks[order[k]] = average
+        start = end + 1
     return ranks
 
 
@@ -106,20 +116,26 @@ def shrink_ranking(
     prior = fit_beta_prior(successes, sizes)
     raw = [k / n for k, n in zip(successes, sizes, strict=True)]
     shrunk = [prior.posterior_mean(k, n) for k, n in zip(successes, sizes, strict=True)]
-    raw_rank = _ranks(raw, labels)
-    shrunk_rank = _ranks(shrunk, labels)
+    raw_rank = _ranks(raw)
+    shrunk_rank = _ranks(shrunk)
     rows = [
         RankRow(labels[i], sizes[i], successes[i], raw[i], shrunk[i], raw_rank[i], shrunk_rank[i])
         for i in range(len(labels))
     ]
-    rows.sort(key=lambda r: r.shrunk_rank)
+    rows.sort(key=lambda r: (r.shrunk_rank, r.raw_rank, r.label))
     return prior, rows
 
 
 def spearman(xs: Sequence[float], ys: Sequence[float]) -> float:
-    """Spearman correlation of two rankings without ties (1 - 6 sum d^2 / (n (n^2 - 1)))."""
+    """Spearman correlation: the Pearson correlation of the average ranks (ties allowed)."""
     n = len(xs)
-    if n < 2:
-        raise ValueError("need at least two values")
-    d2 = math.fsum((x - y) ** 2 for x, y in zip(xs, ys, strict=True))
-    return 1.0 - 6.0 * d2 / (n * (n * n - 1))
+    if n < 2 or len(ys) != n:
+        raise ValueError("need two sequences of the same length, at least two values")
+    rx, ry = _ranks(list(xs)), _ranks(list(ys))
+    mx, my = math.fsum(rx) / n, math.fsum(ry) / n
+    sxy = math.fsum((a - mx) * (b - my) for a, b in zip(rx, ry, strict=True))
+    sxx = math.fsum((a - mx) ** 2 for a in rx)
+    syy = math.fsum((b - my) ** 2 for b in ry)
+    if sxx == 0.0 or syy == 0.0:
+        raise ValueError("a constant sequence has no rank correlation")
+    return sxy / math.sqrt(sxx * syy)

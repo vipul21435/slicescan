@@ -66,8 +66,8 @@ def ranking_markdown(table: SliceTable, column: str) -> str:
     ]
     body = [
         [
-            str(r.shrunk_rank),
-            str(r.raw_rank),
+            f"{r.shrunk_rank:g}",
+            f"{r.raw_rank:g}",
             r.label,
             f"{r.successes}/{r.n}",
             fmt_score(r.raw),

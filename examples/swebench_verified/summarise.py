@@ -34,8 +34,8 @@ def main(folder: Path) -> None:
     for model in ds.models:
         t = slice_table(ds, model, COLUMNS, min_size=10)
         ranks = t.rankings["repo"]
-        moved = sum(1 for r in ranks if r.raw_rank != r.shrunk_rank)
-        rho = spearman([r.raw_rank for r in ranks], [r.shrunk_rank for r in ranks])
+        moved = sum(1 for r in ranks if abs(r.raw_rank - r.shrunk_rank) > 1e-9)
+        rho = spearman([r.raw for r in ranks], [r.shrunk for r in ranks])
         print(
             f"| {short(model)} | {t.successes}/{t.n_items} | {t.family.size} "
             f"| {len(t.significant(0.05, 'raw'))} | {len(t.significant(0.05, 'bh'))} "
