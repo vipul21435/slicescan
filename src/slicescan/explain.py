@@ -85,6 +85,15 @@ def find_slice(
     )
 
 
+def _find_row(table: SliceTable, slice_: Slice) -> SliceResult:
+    """The tested row for this slice, whatever order its columns were written in."""
+    wanted = dict(zip(slice_.columns, slice_.values, strict=True))
+    for row in table.rows:
+        if dict(zip(row.columns, row.values, strict=True)) == wanted:
+            return row
+    raise KeyError(f"no tested slice {slice_.label!r}")
+
+
 def explain(
     dataset: Dataset,
     model: str,
@@ -121,7 +130,7 @@ def explain(
     slice_ = find_slice(dataset, list(scores), label, kinds=kinds, bins=bins, tag_sep=tag_sep)
     tested = True
     try:
-        row = table.find(slice_.label)
+        row = _find_row(table, slice_)
         rank: int | None = table.rows.index(row) + 1
     except KeyError:
         tested = False

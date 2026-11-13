@@ -121,3 +121,24 @@ def test_real_scores_through_the_cli(tmp_path, capsys):
     assert "sign-flip" in out and "A only" not in out
     with pytest.raises(KeyError):
         main(["table", str(res), "--meta", str(meta), "--model", "x", "--rank", "g"])
+
+
+def test_explain_two_way_in_either_order(capsys):
+    for label in ("project=kiwi & tags=io", "tags=io & project=kiwi"):
+        main(
+            [
+                "explain",
+                *ARGS,
+                "--model",
+                "alpha",
+                "--slice",
+                label,
+                "--two-way",
+                "--min-size",
+                "5",
+                "--format",
+                "json",
+            ]
+        )
+        data = json.loads(capsys.readouterr().out)
+        assert data["tested"] is True and data["row"]["n"] == 14
