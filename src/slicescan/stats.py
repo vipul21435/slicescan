@@ -176,7 +176,7 @@ def bootstrap_mean_interval(
     resamples: int = 2000,
     seed: int = 0,
 ) -> tuple[float, float]:
-    """Percentile bootstrap interval for a mean (Efron 1979), seeded so runs repeat."""
+    """Percentile bootstrap interval for a mean, seeded so runs repeat."""
     import random
 
     n = len(values)
