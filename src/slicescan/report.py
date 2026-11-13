@@ -317,7 +317,7 @@ def table_chart(table: SliceTable, path: str, *, top: int = 20) -> None:
     ax.set_xlim(0, 1)
     ax.set_xlabel("score")
     ax.set_title(f"{table.model}: {len(rows)} slices with the smallest p", fontsize=9)
-    ax.legend(fontsize=7, loc="lower right")
+    ax.legend(fontsize=7, loc="lower left")
     fig.tight_layout()
     fig.savefig(path, dpi=110)
     plt.close(fig)
