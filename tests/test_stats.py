@@ -194,3 +194,9 @@ def test_sign_flip_test_against_scipy():
     assert sign_flip_test([0.0, 0.0]) == 1.0
     with pytest.raises(ValueError):
         sign_flip_test([])
+
+
+def test_p_value_is_one_when_every_table_counts():
+    assert fisher_exact(5, 5, 5, 5) == 1.0
+    assert binomial_test(10, 20, 0.5) == 1.0
+    assert fisher_exact(3, 7, 9, 1) < 1.0

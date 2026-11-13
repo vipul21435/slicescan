@@ -74,6 +74,8 @@ def fisher_exact(a: int, b: int, c: int, d: int) -> float:
 
     observed = logpmf(a) + math.log(_REL_TOL)
     kept = [lp for lp in (logpmf(x) for x in range(low, high + 1)) if lp <= observed]
+    if len(kept) == high - low + 1:
+        return 1.0  # every table counts, so the sum is 1 up to rounding
     return min(1.0, math.exp(_log_sum_exp(kept)))
 
 
@@ -92,6 +94,8 @@ def binomial_test(k: int, n: int, p: float = 0.5) -> float:
 
     observed = logpmf(k) + math.log(_REL_TOL)
     kept = [lp for lp in (logpmf(x) for x in range(n + 1)) if lp <= observed]
+    if len(kept) == n + 1:
+        return 1.0  # every outcome counts, so the sum is 1 up to rounding
     return min(1.0, math.exp(_log_sum_exp(kept)))
 
 
