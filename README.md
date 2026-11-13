@@ -62,10 +62,14 @@ Slices with p < 0.05: 1 before adjustment, 1 after Benjamini-Hochberg, 1 after H
 The other commands:
 
 ```
-slicescan compare   RESULTS --meta META A B            # paired difference per slice, McNemar, sign flips
-slicescan reversals RESULTS --meta META A B            # does the overall winner lose inside the slices?
-slicescan explain   RESULTS --meta META --model M --slice "project=kiwi"
+slicescan compare   RESULTS --meta META --kind tags=tag A B    # paired difference per slice, McNemar, sign flips
+slicescan reversals RESULTS --meta META --kind tags=tag A B    # does the overall winner lose inside the slices?
+slicescan explain   RESULTS --meta META --kind tags=tag --model M --slice "project=kiwi"
 ```
+
+A string cell such as `io|parsing` is split into tags only when the column is named with
+`--kind COLUMN=tag`; without it the whole string is one category, the family changes, and so do
+the adjusted p-values. JSON list cells are read as tags without the flag.
 
 Common options: `--columns a,b,c`, `--kind COLUMN=category|numeric|tag`, `--bins 4` (quantile
 bins for numeric columns), `--tag-sep "|"`, `--min-size 10`, `--two-way` with `--two-way-cap
@@ -145,7 +149,9 @@ Data: per-instance results of six public SWE-bench Verified submissions from the
 nothing from either is committed here: `examples/swebench_verified/fetch.py` downloads them and
 derives the metadata columns `repo` (12 repositories), `difficulty` (the dataset's four
 annotation classes), `year` (year the issue was created, cut into quartile bins) and
-`patch_lines` (added plus removed lines in the reference patch, quartile bins). Submissions
+`patch_lines` (added plus removed lines in the reference patch, quartile bins). It also writes
+`f2p_tests` (the number of FAIL_TO_PASS tests), which the numbers below do not use; run the
+commands with `--columns` as shown, since leaving it out adds that column to the family. Submissions
 are named below by their folder names with the common prefix `20260217_mini-v2.0.0_` dropped.
 
 ```
@@ -155,17 +161,17 @@ python examples/swebench_verified/summarise.py DATA
 
 **Slices that differ from the rest, before and after adjustment.** 20 one-way slices tested
 per submission (minimum 10 items; 4 smaller slices left out). `repo ranks moved` counts
-repositories whose shrunk rank differs from their raw rank, and Spearman is the correlation
-between the two rankings:
+repositories whose shrunk rank differs from their raw rank (tied raw rates share the average
+of their ranks), and Spearman is the rank correlation between raw and shrunk rates:
 
 | submission | solved | tests | p<0.05 raw | BH | Holm | repo ranks moved | Spearman |
 |---|---|---|---|---|---|---|---|
-| claude-4-5-haiku-high | 333/500 | 20 | 7 | 6 | 6 | 10 of 12 | 0.853 |
-| deepseek-3-2-high | 350/500 | 20 | 8 | 8 | 4 | 9 of 12 | 0.874 |
-| gemini-3-flash-high | 379/500 | 20 | 8 | 5 | 4 | 7 of 12 | 0.874 |
-| glm-5-high | 364/500 | 20 | 8 | 8 | 6 | 8 of 12 | 0.888 |
-| gpt-5-mini | 281/500 | 20 | 10 | 6 | 6 | 12 of 12 | 0.881 |
-| kimi-k2-5-high | 354/500 | 20 | 8 | 7 | 6 | 8 of 12 | 0.839 |
+| claude-4-5-haiku-high | 333/500 | 20 | 7 | 6 | 6 | 10 of 12 | 0.873 |
+| deepseek-3-2-high | 350/500 | 20 | 8 | 8 | 4 | 9 of 12 | 0.865 |
+| gemini-3-flash-high | 379/500 | 20 | 8 | 5 | 4 | 7 of 12 | 0.883 |
+| glm-5-high | 364/500 | 20 | 8 | 8 | 6 | 8 of 12 | 0.907 |
+| gpt-5-mini | 281/500 | 20 | 10 | 6 | 6 | 12 of 12 | 0.888 |
+| kimi-k2-5-high | 354/500 | 20 | 8 | 7 | 6 | 8 of 12 | 0.858 |
 
 What survives adjustment is mostly difficulty and patch size. In all six submissions the
 slices with a BH-adjusted p below 0.05 include `difficulty=<15 min fix`, `difficulty=1-4 hours`
@@ -173,10 +179,10 @@ and three of the four patch-size quarters; repository slices survive BH in four 
 (`repo=pylint-dev/pylint` in each of those four). For `gpt-5-mini`,
 `difficulty=<15 min fix` solves 0.763 against 0.435 for the rest (Holm p 6.3e-12),
 `difficulty=1-4 hours` 0.143 against 0.600, and the largest quarter of reference patches (13
-to 232 changed lines) 0.317 against 0.657. The repository slices that look bad before
-adjustment do not survive it: `repo=pylint-dev/pylint` (2 of 10 solved, raw p 0.025) and
-`repo=astropy/astropy` (7 of 22, raw p 0.026) both end at Holm p 0.346 and BH p 0.060. `slicescan explain ... --slice
-"repo=pylint-dev/pylint"` breaks that slice down: 5 of its 10 instances are in the largest
+to 232 changed lines) 0.317 against 0.657. The repository slices below the rest with raw p
+under 0.05 do not survive adjustment: `repo=pylint-dev/pylint` (2 of 10 solved, raw p 0.025) and
+`repo=astropy/astropy` (7 of 22, raw p 0.026) both end at Holm p 0.346 and BH p
+0.060. `slicescan explain ... --slice "repo=pylint-dev/pylint"` breaks that slice down: 5 of its 10 instances are in the largest
 patch-size quarter, and none of those 5 was solved.
 
 ```
@@ -192,17 +198,19 @@ the slices marked on the right have a BH-adjusted p below 0.05.
 
 **Shrunk against raw ranking of repositories.** For `gpt-5-mini` the fitted prior has mean
 0.562 and size a + b = 28.6 items. The raw ranking puts `pallets/flask` first (1 instance,
-solved) and `psf/requests` second (6 of 8); shrunk, they fall to 4th and 3rd, and
-`scikit-learn/scikit-learn` (24 of 32) moves from 3rd to 1st. At the bottom,
+solved), with `psf/requests` (6 of 8) and `scikit-learn/scikit-learn` (24 of 32) tied second
+at 0.750 (rank 2.5 each); shrunk, `pallets/flask` falls to 4th, `psf/requests` to 3rd, and
+`scikit-learn/scikit-learn` rises to 1st. At the bottom,
 `pylint-dev/pylint` (raw 0.200) is pulled to 0.468 and `astropy/astropy` (raw 0.318) to 0.456.
 For `gemini-3-flash-high`, `mwaskom/seaborn` (0 of 2) is last on raw score and 10th of 12
 shrunk.
 
 **Pairs and reversals.** Over all 15 pairs (the second table `summarise.py` prints), the paired
-overall differences run from -0.008 (`deepseek-3-2-high` minus `kimi-k2-5-high`) to +0.196
-(`gemini-3-flash-high` minus `gpt-5-mini`). The number of slices whose difference has the
-opposite sign to the overall one runs from 0 (three pairs, each against `gpt-5-mini`) to 8 (the
--0.008 pair); none of these flips has a BH-adjusted p below 0.05. No pair shows a reversal on
+overall differences run in absolute size from 0.008 (`deepseek-3-2-high` minus
+`kimi-k2-5-high`, -0.008) to 0.196 (`gemini-3-flash-high` minus `gpt-5-mini`, +0.196); signed,
+they run from -0.146 (`gpt-5-mini` minus `kimi-k2-5-high`) to +0.196. The number of slices
+whose difference has the opposite sign to the overall one runs from 0 (three pairs, each
+against `gpt-5-mini`) to 8 (`deepseek-3-2-high` against `kimi-k2-5-high`, the closest pair); none of these flips has a BH-adjusted p below 0.05. No pair shows a reversal on
 `repo`, `difficulty`, `year` or `patch_lines`, full or majority. All six submissions were
 scored on the same 500 instances, so a full reversal was impossible to begin with.
 
@@ -234,8 +242,12 @@ planted sign flip and the kidney-stone reversal.
   interval.
 - Fisher's test is conditional and conservative for small slices, so both adjustments are on
   the cautious side.
-- BH's guarantee assumes independent or positively dependent tests. Overlapping slices are
-  usually positively dependent, but that is not checked.
+- BH has no formal guarantee for these tests. Its proofs need independent or positively
+  dependent tests, and the slices of one column, each tested against the rest, are negatively
+  correlated. The evidence offered here is the seeded global-null simulation in the tests
+  (described above), not a proof.
+- With two or three slices the moment estimate of the prior often reaches its upper limit and
+  nothing is shrunk. For a tag column the pooled rate counts an item once per tag it carries.
 - The test of a slice against "the rest" depends on what else is in the data: one very bad
   slice drags the rest down and can make healthy slices look better than the rest.
 - The reversal check counts slices; it does not test whether the reversed slice differences
