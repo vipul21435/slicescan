@@ -91,7 +91,8 @@ every item are not tested and do not enter the family.
 **Multiple testing.** Adjusted p-values over every slice tested, one-way and two-way
 together, by Holm's step-down procedure (Holm 1979), which controls the family-wise error rate
 under any dependence, and by the Benjamini-Hochberg step-up procedure (Benjamini and Hochberg
-1995), which controls the false discovery rate for independent or positively dependent tests.
+1995), which controls the false discovery rate for independent tests and, as later work
+showed, for positively dependent ones.
 Slices of the same data overlap, so their tests are dependent; Holm needs no assumption about
 that, and BH is the less conservative of the two. The output states the family: how many
 tests, over which columns, and how many slices were left out and why.
@@ -164,7 +165,10 @@ between the two rankings:
 | gpt-5-mini | 281/500 | 20 | 10 | 6 | 6 | 12 of 12 | 0.881 |
 | kimi-k2-5-high | 354/500 | 20 | 8 | 7 | 6 | 8 of 12 | 0.839 |
 
-What survives adjustment is mostly difficulty and patch size. For `gpt-5-mini`,
+What survives adjustment is mostly difficulty and patch size. In all six submissions the
+slices with a BH-adjusted p below 0.05 include `difficulty=<15 min fix`, `difficulty=1-4 hours`
+and three of the four patch-size quarters; repository slices survive BH in four of the six
+(`repo=pylint-dev/pylint` in each of those four). For `gpt-5-mini`,
 `difficulty=<15 min fix` solves 0.763 against 0.435 for the rest (Holm p 6.3e-12),
 `difficulty=1-4 hours` 0.143 against 0.600, and the largest quarter of reference patches (13
 to 232 changed lines) 0.317 against 0.657. The repository slices that look bad before
