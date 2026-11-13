@@ -145,7 +145,7 @@ def check_partition(
         verdict = "none"
     elif wins == 0 and losses >= 2:
         verdict = "full"
-    elif losses > len(decided) / 2:
+    elif losses > len(decided) / 2 and len(decided) >= 2:
         verdict = "majority"
     else:
         verdict = "none"

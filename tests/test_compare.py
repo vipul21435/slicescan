@@ -117,3 +117,22 @@ def test_tag_columns_are_skipped_and_missing_kept():
     labels = [p.label for p in report.checks[0].slices]
     assert labels == ["g=k", "g=(missing)"]
     assert report.checks[0].winner == "tie" and report.checks[0].verdict == "none"
+
+
+def test_one_shared_slice_is_not_a_majority_reversal():
+    results = [
+        {"item": "x1", "model": "A", "score": 1},
+        {"item": "x2", "model": "A", "score": 1},
+        {"item": "y1", "model": "A", "score": 0},
+        {"item": "y1", "model": "B", "score": 1},
+        {"item": "z1", "model": "B", "score": 0},
+    ]
+    meta = [
+        {"item": "x1", "g": "only-a"},
+        {"item": "x2", "g": "only-a"},
+        {"item": "y1", "g": "both"},
+        {"item": "z1", "g": "only-b"},
+    ]
+    check = reversals(build_dataset(results, meta), "A", "B", ["g"]).checks[0]
+    assert check.winner == "a" and check.losses == 1 and check.wins == 0
+    assert check.verdict == "none"
