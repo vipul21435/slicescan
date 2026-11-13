@@ -2,8 +2,8 @@
 
 Holm (1979) controls the family-wise error rate under any dependence between the tests.
 Benjamini and Hochberg (1995) control the false discovery rate for independent tests, and later
-work extended the guarantee to positively dependent ones; slices of the same data overlap, so
-their tests are dependent.
+work extended the guarantee to positively dependent ones. Slices of one column, each tested
+against the rest, are negatively correlated, so BH carries no formal guarantee here.
 """
 
 from __future__ import annotations
