@@ -27,7 +27,9 @@ for the optional chart.
 ## Quickstart
 
 Input is one row per (item, model) with a score, and optionally a metadata file with one row
-per item, both JSONL or CSV, joined on the item id. Scores are 0/1 or real numbers. The example
+per item, both JSONL or CSV, joined on the item id. Scores are 0/1 or real numbers. Other
+columns of the results file count as item metadata when every model gives an item the same
+value; a column that varies by model for the same item (a cost, say) is left out. The example
 data is synthetic (`examples/make_example_data.py`), with the system `alpha` planted to do
 worse on the project `kiwi`:
 
@@ -173,7 +175,9 @@ and three of the four patch-size quarters; repository slices survive BH in four 
 `difficulty=1-4 hours` 0.143 against 0.600, and the largest quarter of reference patches (13
 to 232 changed lines) 0.317 against 0.657. The repository slices that look bad before
 adjustment do not survive it: `repo=pylint-dev/pylint` (2 of 10 solved, raw p 0.025) and
-`repo=astropy/astropy` (7 of 22, raw p 0.026) both end at Holm p 0.346 and BH p 0.060.
+`repo=astropy/astropy` (7 of 22, raw p 0.026) both end at Holm p 0.346 and BH p 0.060. `slicescan explain ... --slice
+"repo=pylint-dev/pylint"` breaks that slice down: 5 of its 10 instances are in the largest
+patch-size quarter, and none of those 5 was solved.
 
 ```
 slicescan table DATA/results.jsonl --meta DATA/meta.csv --model 20260217_mini-v2.0.0_gpt-5-mini \
