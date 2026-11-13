@@ -192,3 +192,29 @@ def bootstrap_mean_interval(
     lo_i = min(resamples - 1, max(0, math.floor(tail * resamples)))
     hi_i = min(resamples - 1, max(0, math.ceil((1.0 - tail) * resamples) - 1))
     return means[lo_i], means[hi_i]
+
+
+def sign_flip_test(
+    differences: list[float], *, resamples: int = 2000, seed: int = 0
+) -> float:
+    """Two-sided paired permutation test: flip the sign of each difference at random.
+
+    Under the null that the two systems are exchangeable on every item, each paired
+    difference is as likely to be negative as positive. Returns ``(1 + hits) / (1 + resamples)``.
+    """
+    import random
+
+    n = len(differences)
+    if n == 0:
+        raise ValueError("no differences")
+    observed = abs(math.fsum(differences))
+    if observed == 0.0:
+        return 1.0
+    rng = random.Random(seed)
+    tol = 1e-12 * max(1.0, observed)
+    hits = 0
+    for _ in range(resamples):
+        total = math.fsum(d if rng.random() < 0.5 else -d for d in differences)
+        if abs(total) >= observed - tol:
+            hits += 1
+    return (1 + hits) / (1 + resamples)

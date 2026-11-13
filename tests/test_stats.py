@@ -179,3 +179,18 @@ def test_bootstrap_interval_close_to_scipy():
         bootstrap_mean_interval([])
     with pytest.raises(ValueError):
         bootstrap_mean_interval([1.0], resamples=0)
+
+
+def test_sign_flip_test_against_scipy():
+    from slicescan.stats import sign_flip_test
+
+    rng = np.random.default_rng(14)
+    d = list(rng.normal(0.08, 0.3, size=40))
+    ours = sign_flip_test(d, resamples=4000, seed=2)
+    ref = sps.permutation_test(
+        (d,), np.mean, permutation_type="samples", n_resamples=4000, random_state=3
+    ).pvalue
+    assert ours == pytest.approx(ref, abs=0.015)
+    assert sign_flip_test([0.0, 0.0]) == 1.0
+    with pytest.raises(ValueError):
+        sign_flip_test([])
