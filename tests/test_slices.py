@@ -119,6 +119,13 @@ def test_build_dataset_joins_and_checks():
     assert ds.meta_columns() == ["lang", "repo"]
     with pytest.raises(ValueError, match="scored twice"):
         build_dataset(results + [results[0]])
+    two = build_dataset(
+        [
+            {"item": "a", "model": "m", "score": 1, "cost": 0.1, "lang": "py"},
+            {"item": "a", "model": "n", "score": 0, "cost": 0.3, "lang": "py"},
+        ]
+    )
+    assert two.per_model_columns == ["cost"] and two.meta == {"a": {"lang": "py"}}
     with pytest.raises(ValueError, match="two values"):
         build_dataset(results, [{"item": "a", "lang": "rs"}])
     with pytest.raises(ValueError, match="no 'score'"):

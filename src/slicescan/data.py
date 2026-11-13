@@ -71,6 +71,7 @@ class Dataset:
 
     scores: dict[str, dict[str, float]]
     meta: dict[str, dict[str, Any]] = field(default_factory=dict)
+    per_model_columns: list[str] = field(default_factory=list)
 
     @property
     def models(self) -> list[str]:
@@ -112,25 +113,37 @@ def build_dataset(
 ) -> Dataset:
     """Join result rows (item, model, score, ...) with optional metadata rows keyed by item.
 
-    Columns of the result rows other than item, model and score are taken as item metadata too.
-    An item scored twice for the same model is an error, as is an item with two different
-    values for the same metadata column.
+    Columns of the result rows other than item, model and score are taken as item metadata when
+    every model gives an item the same value; a column whose value differs between models for
+    some item (a cost or a run time, say) is a per-model column, left out of the metadata and
+    listed in ``per_model_columns``. An item scored twice for the same model is an error, as is
+    an item with two different values for the same column of the metadata file.
     """
     scores: dict[str, dict[str, float]] = {}
     meta: dict[str, dict[str, Any]] = {}
+    from_results: dict[str, dict[str, Any]] = {}
+    per_model: set[str] = set()
     for n, row in enumerate(results, start=1):
         for col in (item_col, model_col, score_col):
             if col not in row or is_missing(row[col]):
                 raise ValueError(f"result row {n} has no {col!r} value")
         item = str(row[item_col])
         model = str(row[model_col])
-        per_model = scores.setdefault(model, {})
-        if item in per_model:
+        model_scores = scores.setdefault(model, {})
+        if item in model_scores:
             raise ValueError(f"item {item!r} is scored twice for model {model!r}")
-        per_model[item] = parse_score(row[score_col])
-        extra = {k: v for k, v in row.items() if k not in (item_col, model_col, score_col)}
-        if extra:
-            _merge_meta(meta, item, extra)
+        model_scores[item] = parse_score(row[score_col])
+        current = from_results.setdefault(item, {})
+        for key, value in row.items():
+            if key in (item_col, model_col, score_col) or is_missing(value):
+                continue
+            if key in current and current[key] != value:
+                per_model.add(key)
+            current.setdefault(key, value)
+    for item, row in from_results.items():
+        kept = {k: v for k, v in row.items() if k not in per_model}
+        if kept:
+            meta[item] = kept
     if meta_rows is not None:
         key = meta_item_col or item_col
         for n, row in enumerate(meta_rows, start=1):
@@ -138,7 +151,7 @@ def build_dataset(
                 raise ValueError(f"metadata row {n} has no {key!r} value")
             item = str(row[key])
             _merge_meta(meta, item, {k: v for k, v in row.items() if k != key})
-    return Dataset(scores=scores, meta=meta)
+    return Dataset(scores=scores, meta=meta, per_model_columns=sorted(per_model))
 
 
 def load_dataset(
